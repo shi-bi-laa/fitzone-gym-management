@@ -1,63 +1,55 @@
-# FitZone – Gym Management UI
+# FitZone — Gym Management (Supabase backend)
 
-A responsive React + TypeScript frontend for a single-gym management application. This release uses sample data and browser local storage only. It does not connect to a backend, scan QR codes, or process real payments.
+React + Vite frontend → Cloudflare Worker API (`worker/index.ts`) → Supabase Postgres.
+Members (add / edit) and Attendance (check-in / check-out) are stored in Supabase.
+Plans, Payments and Reports still use demo data.
 
-## Included pages
-- Dashboard with KPI cards, attendance and revenue charts, and recent activity
-- Members: search, filter, add and edit members, CSV export
-- Attendance: manual check-in/check-out, search, filter and CSV export
-- Membership plans: create, edit and remove plans
-- Payments: sample transactions and local status changes
-- Reports: analytics charts and downloadable demo reports
-- Staff: add staff, activate/deactivate demo staff records
-- Settings: edit gym profile details
+## Setup (3 steps, ~5 minutes)
 
-## Requirements
-- Node.js 20.19+ (or 22.12+)
-- npm
+### 1. Create the tables in Supabase
+Supabase Dashboard → **SQL Editor** → **New query** → paste the whole of `supabase.sql` → **Run**.
+(Includes 4 demo members; delete the last INSERT block if you want an empty start. Safe to re-run.)
+
+### 2. Check the project URL
+`wrangler.jsonc` → `vars.SUPABASE_URL` should be `https://<your-project-ref>.supabase.co`
+(Supabase → Project Settings → API → Project URL).
+
+### 3. Give the Worker your secret key (never put it in code or GitHub)
+Supabase → **Project Settings → API Keys** → copy the **Secret key** (`sb_secret_…`)
+(or the legacy `service_role` key).
+
+Cloudflare → Workers & Pages → **fitzone-gym-management** → **Settings → Variables and Secrets → Add**
+- Type: **Secret**
+- Name: `SUPABASE_SECRET_KEY`
+- Value: the key → **Deploy**
+
+Then push to GitHub (or Retry deployment). Done. Open `https://<your-site>/api/health` — it should show `"database": true`.
 
 ## Run locally
-```bash
+Create a file `.dev.vars` (git-ignored):
+```
+SUPABASE_URL=https://<your-project-ref>.supabase.co
+SUPABASE_SECRET_KEY=<your secret key>
+```
+```
 npm install
-npm run dev
-```
-Open the local URL printed by Vite (usually http://localhost:5173).
-
-## Create a production build
-```bash
 npm run build
-npm run preview
+npm run dev:api        # app + API at http://localhost:8787
 ```
-The production files are generated in `dist/`.
 
-## Deploy to Cloudflare Pages (recommended)
-1. Extract this ZIP file.
-2. Create a new **private** repository on GitHub (for example, `fitzone-gym-management`).
-3. Open a terminal in the extracted `fitzone` project folder and run:
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial FitZone frontend"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/fitzone-gym-management.git
-   git push -u origin main
-   ```
-   Replace `YOUR_USERNAME` with your GitHub username and use the repository URL GitHub provides.
-4. Sign in to Cloudflare and open **Workers & Pages → Create application → Pages → Connect to Git**.
-5. Select the GitHub repository and configure:
-   - Framework preset: **Vite** (or None)
-   - Production branch: `main`
-   - Build command: `npm run build`
-   - Build output directory: `dist`
-   - Root directory: `/` (leave default if the project files are at repository root)
-6. Select **Save and Deploy**. Cloudflare will build and publish the UI. Future pushes to `main` trigger new deployments.
+## API
+| Method | Path | Body |
+|---|---|---|
+| GET | /api/members | |
+| POST | /api/members | name*, email, phone, gender, plan, joined, expiry, status (ID auto: FZ1001…) |
+| PUT | /api/members/:id | same |
+| GET | /api/attendance?date=YYYY-MM-DD | defaults to today |
+| POST | /api/attendance/checkin | memberId*, method (Manual/QR) — blocks Expired/Inactive and double check-in |
+| POST | /api/attendance/:id/checkout | |
 
-The included `public/_redirects` file configures SPA fallback so direct navigation to routes such as `/members` and `/attendance` works on Cloudflare Pages.
+"Today" uses `TIMEZONE` in `wrangler.jsonc` (default Asia/Kolkata).
 
-## Local demo data
-Members, attendance, plans, payments, staff and gym profile edits are stored in this browser's local storage. Data is not shared between browsers or devices and is not protected by user authentication. Use a private browser window or clear this site's local storage to reset the demo.
-
-## Notes
-- No backend or environment variables are required for this UI-only version.
-- Payment records are illustrative only; no money is collected.
-- QR attendance and real staff authentication are not implemented.
+## Security
+- Tables have Row Level Security on with no public policies, so the public anon key cannot read or write them. Only the Worker (secret key) can.
+- The site/API itself has no login: anyone with your URL can add members. Free fix: Cloudflare Zero Trust → Access (email login) in front of the site.
+- Free tier note: Supabase free projects pause after ~1 week of inactivity; open the dashboard and click Restore if that happens.
