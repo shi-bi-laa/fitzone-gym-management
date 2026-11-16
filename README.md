@@ -25,11 +25,20 @@ Cloudflare → Workers & Pages → **fitzone-gym-management** → **Settings →
 
 Then push to GitHub (or Retry deployment). Done. Open `https://<your-site>/api/health` — it should show `"database": true`.
 
+### 4. Admin login
+Cloudflare → your Worker → **Settings → Variables and Secrets** (the *runtime* section at the top, NOT the one under "Build") → **Add**
+- Type **Secret**, name `ADMIN_PASSWORD`, value = a strong password (8+ characters).
+- Username is `admin` (change `ADMIN_USERNAME` in `wrangler.jsonc` if you like).
+
+Without `ADMIN_PASSWORD` nobody can sign in (the API stays locked). Changing the password signs everyone out.
+CLI alternative: `npx wrangler secret put ADMIN_PASSWORD`
+
 ## Run locally
 Create a file `.dev.vars` (git-ignored):
 ```
 SUPABASE_URL=https://<your-project-ref>.supabase.co
 SUPABASE_SECRET_KEY=<your secret key>
+ADMIN_PASSWORD=<choose a password, 8+ chars>
 ```
 ```
 npm install
@@ -38,8 +47,13 @@ npm run dev:api        # app + API at http://localhost:8787
 ```
 
 ## API
+All routes except `/api/health` and `/api/auth/*` require an admin session cookie.
+
 | Method | Path | Body |
 |---|---|---|
+| POST | /api/auth/login | username, password |
+| POST | /api/auth/logout | |
+| GET | /api/auth/me | |
 | GET | /api/members | |
 | POST | /api/members | name*, email, phone, gender, plan, joined, expiry, status (ID auto: FZ1001…) |
 | PUT | /api/members/:id | same |
@@ -51,5 +65,6 @@ npm run dev:api        # app + API at http://localhost:8787
 
 ## Security
 - Tables have Row Level Security on with no public policies, so the public anon key cannot read or write them. Only the Worker (secret key) can.
-- The site/API itself has no login: anyone with your URL can add members. Free fix: Cloudflare Zero Trust → Access (email login) in front of the site.
+- Admin login: password in a Cloudflare secret, signed HttpOnly session cookie (7 days), failed attempts are slowed, cross-site writes are blocked.
+- Every data route requires login; the public site only shows the sign-in page.
 - Free tier note: Supabase free projects pause after ~1 week of inactivity; open the dashboard and click Restore if that happens.

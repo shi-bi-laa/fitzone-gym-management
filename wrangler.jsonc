@@ -10,6 +10,7 @@
   },
   "vars": {
     "TIMEZONE": "Asia/Kolkata",
+    "ADMIN_USERNAME": "admin",
     "SUPABASE_URL": "https://opbwjbptcdwbldwpurjy.supabase.co"
   }
 }

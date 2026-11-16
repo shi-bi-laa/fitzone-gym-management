@@ -1,3 +1,5 @@
+import { authConfigured, checkCredentials, clearCookie, isAuthenticated, sameOrigin, sessionCookie } from './auth'
+
 // FitZone API — Cloudflare Worker -> Supabase (Postgres via PostgREST).
 // Serves /api/*; everything else is the static React app.
 
@@ -6,6 +8,8 @@ interface Env {
   SUPABASE_URL: string
   SUPABASE_SECRET_KEY: string // set as a Cloudflare secret, never in code
   TIMEZONE?: string
+  ADMIN_USERNAME?: string
+  ADMIN_PASSWORD?: string // Cloudflare secret
 }
 
 const STATUSES = ['Active', 'Expiring', 'Expired', 'Inactive']
@@ -76,8 +80,6 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname.replace(/\/+$/, '')
   const method = req.method
 
-  if (path === '/api/health') return json({ ok: true, today: todayIn(tz), database: !!env.SUPABASE_URL && !!env.SUPABASE_SECRET_KEY })
-
   // Members
   if (path === '/api/members' && method === 'GET') {
     const rows = await sb<MemberRow[]>(env, `members?select=${MEMBER_COLS}&order=seq.desc`)
@@ -131,14 +133,39 @@ async function handleApi(req: Request, env: Env, url: URL): Promise<Response> {
   return fail('Not found.', 404)
 }
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+async function handleAuth(req: Request, env: Env, url: URL): Promise<Response | null> {
+  const secure = url.protocol === 'https:'
+  if (url.pathname === '/api/auth/me' && req.method === 'GET')
+    return json({ authenticated: await isAuthenticated(env, req), configured: authConfigured(env) })
+  if (url.pathname === '/api/auth/logout' && req.method === 'POST')
+    return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json', 'Set-Cookie': clearCookie(secure) } })
+  if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+    if (!authConfigured(env)) return fail('Admin login is not set up yet. Add the ADMIN_PASSWORD secret (at least 8 characters).', 503)
+    const b = await readBody(req)
+    const ok = await checkCredentials(env, clean(b.username, 100), typeof b.password === 'string' ? b.password.slice(0, 200) : '')
+    if (!ok) { await sleep(700); return fail('Incorrect username or password.', 401) }
+    return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json', 'Set-Cookie': await sessionCookie(env, secure) } })
+  }
+  return null
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url)
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req)
-    if (url.pathname !== '/api/health' && (!env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY))
-      return fail('Database not connected: set SUPABASE_URL and SUPABASE_SECRET_KEY (see README).', 500)
-    try { return await handleApi(req, env, url) }
-    catch (e) {
+    if (!sameOrigin(req, url)) return fail('Cross-site request blocked.', 403)
+    try {
+      if (url.pathname === '/api/health') return json({ ok: true, database: !!env.SUPABASE_URL && !!env.SUPABASE_SECRET_KEY, login: authConfigured(env) })
+      const authRes = await handleAuth(req, env, url)
+      if (authRes) return authRes
+      // Everything below requires an admin session.
+      if (!(await isAuthenticated(env, req))) return fail('Please sign in.', 401)
+      if (!env.SUPABASE_URL || !env.SUPABASE_SECRET_KEY)
+        return fail('Database not connected: set SUPABASE_URL and SUPABASE_SECRET_KEY (see README).', 500)
+      return await handleApi(req, env, url)
+    } catch (e) {
       if (e instanceof HttpError) return fail(e.message, e.status)
       console.error(e); return fail('Server error. Please try again.', 500)
     }

@@ -3,6 +3,7 @@ import type { Member, Visit } from './data/mock'
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...init })
   const data = await res.json().catch(() => ({}))
+  if (res.status === 401 && !path.startsWith('/api/auth/')) window.dispatchEvent(new Event('fz-unauthorized'))
   if (!res.ok) throw new Error((data as { error?: string }).error || `Request failed (${res.status})`)
   return data as T
 }
@@ -10,6 +11,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 export type MemberInput = Omit<Member, 'id' | 'avatar'>
 
 export const api = {
+  me: () => req<{ authenticated: boolean; configured: boolean }>('/api/auth/me'),
+  login: (username: string, password: string) => req<{ ok: true }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  logout: () => req<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
   members: () => req<Member[]>('/api/members'),
   addMember: (m: MemberInput) => req<Member>('/api/members', { method: 'POST', body: JSON.stringify(m) }),
   updateMember: (id: string, m: MemberInput) => req<Member>(`/api/members/${id}`, { method: 'PUT', body: JSON.stringify(m) }),
