@@ -2,6 +2,7 @@
 # yarn lockfile v1
 
 
+<<<<<<< HEAD
 "@alloc/quick-lru@^5.2.0":
   version "5.3.0"
   resolved "https://registry.yarnpkg.com/@alloc/quick-lru/-/quick-lru-5.3.0.tgz#9073d52ad3cebbedd0d8c9f3e65aa5527fabd1e0"
@@ -1489,3 +1490,5 @@ yallist@^3.0.2:
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/yallist/-/yallist-3.1.1.tgz#dbb7daf9bfd8bac9ab45ebf602b8cbad0d5d08fd"
   integrity sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==
+=======
+>>>>>>> c38639b9260bc49730f1008cad1b566d7c456ab6
