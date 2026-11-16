@@ -1,0 +1,17 @@
+import type { ReactNode } from 'react'
+import { Search, Bell, ChevronDown, Menu, X, Plus, Download, Filter, MoreHorizontal, CalendarDays, ArrowUpRight, ArrowDownRight, Dumbbell } from 'lucide-react'
+
+export function cn(...values: (string | false | undefined)[]) { return values.filter(Boolean).join(' ') }
+export function money(value:number){return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(value)}
+export function PageHeading({title,subtitle,action}:{title:string;subtitle:string;action?:ReactNode}){return <div className="page-heading"><div><h1>{title}</h1><p>{subtitle}</p></div>{action}</div>}
+export function Button({children,onClick,variant='primary',className='',type='button',disabled=false}:{children:ReactNode;onClick?:()=>void;disabled?:boolean;variant?:'primary'|'secondary'|'ghost'|'danger';className?:string;type?:'button'|'submit'}){return <button type={type} onClick={onClick} disabled={disabled} className={`btn btn-${variant} ${className}`}>{children}</button>}
+export function Status({value}:{value:string}){const tone=value.toLowerCase().replaceAll(' ','-');return <span className={`status status-${tone}`}>{value}</span>}
+export function Avatar({name,size='md'}:{name:string;size?:'sm'|'md'|'lg'}){const initials=name.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase();return <span className={`avatar avatar-${size}`}>{initials}</span>}
+export function SearchBox({value,onChange,placeholder='Search...'}:{value:string;onChange:(v:string)=>void;placeholder?:string}){return <label className="search-box"><Search size={17}/><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/></label>}
+export function EmptyState({title,description}:{title:string;description:string}){return <div className="empty-state"><Dumbbell size={28}/><strong>{title}</strong><span>{description}</span></div>}
+export function Modal({title,subtitle,children,onClose}:{title:string;subtitle?:string;children:ReactNode;onClose:()=>void}){return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><section className="modal"><div className="modal-head"><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={19}/></button></div>{children}</section></div>}
+export function Field({label,children}:{label:string;children:ReactNode}){return <label className="field"><span>{label}</span>{children}</label>}
+export function Select({value,onChange,children}:{value:string;onChange:(v:string)=>void;children:ReactNode}){return <select className="input" value={value} onChange={e=>onChange(e.target.value)}>{children}</select>}
+export function TableToolbar({children}:{children:ReactNode}){return <div className="table-toolbar">{children}</div>}
+export function Topbar({onMenu}:{onMenu:()=>void}){return <header className="topbar"><button className="icon-button mobile-menu" onClick={onMenu}><Menu size={20}/></button><div className="breadcrumb">Workspace <span>/</span> <strong>FitZone</strong></div><div className="topbar-right"><div className="topbar-date"><CalendarDays size={15}/> Monday, 16 November 2026</div><button className="icon-button notification" aria-label="Notifications"><Bell size={19}/><i/></button><div className="top-user"><Avatar name="Admin"/><div><strong>Admin</strong><span>Administrator</span></div><ChevronDown size={15}/></div></div></header>}
+export const toolbarIcons={Plus,Download,Filter,MoreHorizontal,ArrowUpRight,ArrowDownRight}
